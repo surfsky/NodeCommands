@@ -1,0 +1,30 @@
+{
+  "name": "doc-merger",
+  "version": "1.0.0",
+  "description": "A script to merge docx files into a single PDF.",
+  "main": "mergeToPdf.js",
+  "bin": {
+    "topdf": "toPdf.js",
+    "mergetopdf": "mergeToPdf.js"
+  },
+  "scripts": {
+    "start": "node mergeToPdf.js",
+    "build": "pkg ."
+  },
+  "pkg": {
+    "targets": [
+      "node18-macos-arm64",
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "keywords": [],
+  "author": "surfsky.github.io",
+  "license": "ISC",
+  "dependencies": {
+    "glob": "^13.0.6",
+    "mammoth": "^1.11.0",
+    "pdf-merger-js": "^5.1.2",
+    "pdf-parse": "^1.1.1"
+  }
+}
