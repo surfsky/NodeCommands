@@ -6,6 +6,8 @@
 
 - **Word 转 PDF**: 将 Word 文档（.doc, .docx）批量转换为 PDF。
 - **PDF 合并**: 将多个 PDF 文件合并为一个。
+- **文件查找**: 在指定目录下递归列出文件。
+- **文本查找**: 在指定目录下递归查找包含特定文本的文件。
 
 ## 环境要求
 
@@ -18,23 +20,23 @@
    ```bash
    git clone https://github.com/surfsky/NodeCommands.git
    cd NodeCommands
-   ```
-
-2. **安装依赖**
-   ```bash
    npm install
    ```
 
-3. **运行工具**
+2. **运行工具**
 
-   - **批量转换 Word 为 PDF**
      ```bash
+     - #批量转换 Word 为 PDF**
      node toPdf.js [文件或目录...] --outdir=./output
-     ```
 
-   - **合并多个 PDF**
-     ```bash
+     #**合并多个 PDF**
      node mergeToPdf.js [文件或目录...] --outfile=merged.pdf
+
+     # 列出文件
+     node listFiles.js [目录]
+
+     # 查找文本
+     node searrch.js [目录] [文本]
      ```
 
 ## 开发
