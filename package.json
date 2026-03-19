@@ -8,7 +8,10 @@
     "mergetopdf": "mergeToPdf.js"
   },
   "scripts": {
-    "start": "node mergeToPdf.js",
+    "start": "node server/app.js",
+    "start:web": "node server/app.js",
+    "start:merge": "node mergeToPdf.js",
+    "start:topdf": "node toPdf.js",
     "build": "pkg ."
   },
   "pkg": {
@@ -22,6 +25,7 @@
   "author": "surfsky.github.io",
   "license": "ISC",
   "dependencies": {
+    "express": "^5.2.1",
     "glob": "^13.0.6",
     "mammoth": "^1.11.0",
     "pdf-merger-js": "^5.1.2",

@@ -1,6 +1,6 @@
 # NodeCommands
 
-一组基于 Node.js 的命令行工具集。
+一组基于 Node.js 的命令行工具与本地 Web 工具集。
 
 ## 特性
 
@@ -8,6 +8,21 @@
 - **PDF 合并**: 将多个 PDF 文件合并为一个。
 - **文件查找**: 在指定目录下递归列出文件。
 - **文本查找**: 在指定目录下递归查找包含特定文本的文件。
+- **Web 控制台**: 在浏览器中调用本地 API，统一入口执行工具。
+
+## 目录结构
+
+```text
+.
+├── server/              # 本地 Web/API 服务
+│   └── app.js
+├── wwwroot/             # 前端页面（index/listfiles/topdf/components）
+├── listfiles.js         # CLI: 列目录
+├── toPdf.js             # CLI: Word 转 PDF
+├── mergeToPdf.js        # CLI: PDF 合并
+├── search.js            # CLI: 文本查找
+└── utils.js
+```
 
 ## 环境要求
 
@@ -23,21 +38,35 @@
    npm install
    ```
 
-2. **运行工具**
+2. **运行 CLI 工具**
 
-     ```bash
-     - #批量转换 Word 为 PDF**
-     node toPdf.js [文件或目录...] --outdir=./output
+```bash
+# 批量转换 Word 为 PDF
+node toPdf.js [文件或目录...] --outdir=./output
 
-     #**合并多个 PDF**
-     node mergeToPdf.js [文件或目录...] --outfile=merged.pdf
+# 合并多个 PDF
+node mergeToPdf.js [文件或目录...] --outfile=merged.pdf
 
-     # 列出文件
-     node listFiles.js [目录]
+# 列出文件
+node listfiles.js [目录]
 
-     # 查找文本
-     node searrch.js [目录] [文本]
-     ```
+# 查找文本
+node search.js [目录] [文本]
+```
+
+3. **运行 Web 工具（推荐）**
+
+```bash
+npm start
+# 或
+npm run start:web
+```
+
+打开浏览器访问：
+
+```text
+http://127.0.0.1:5600
+```
 
 ## 开发
 

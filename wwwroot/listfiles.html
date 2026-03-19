@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ListFiles</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace'] }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="h-full bg-gray-950 text-gray-100">
+  <main class="h-full p-4 sm:p-5">
+    <section class="h-full min-h-0 bg-gray-900 border border-gray-800 rounded-lg p-4 sm:p-5 flex flex-col">
+      <p class="text-sm text-gray-400 mb-4">调用 listfiles.js 列出目录结构（统一后端脚本架构）。</p>
+
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <button id="pick-btn"
+          class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+          </svg>
+          选择文件夹
+        </button>
+
+        <input id="dir-input" type="text" value="./data" placeholder="输入目录路径，例如 ./data"
+          class="min-w-[220px] flex-1 bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500" />
+
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-400 whitespace-nowrap">最大深度</label>
+          <input id="depth-input" type="number" min="1" max="30" placeholder="∞"
+            class="w-20 bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+        </div>
+
+        <button id="run-btn"
+          class="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l14 9-14 9V3z"/>
+          </svg>
+          执行
+        </button>
+      </div>
+
+      <div id="folder-info" class="hidden mb-3 flex items-center gap-2 text-sm text-gray-300 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2">
+        <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>
+        </svg>
+        <span id="folder-path" class="font-mono truncate"></span>
+      </div>
+
+      <terminal-console id="console" title="listfiles.js output"></terminal-console>
+    </section>
+  </main>
+
+  <script src="./components.js"></script>
+  <script>
+    const pickBtn = document.getElementById('pick-btn');
+    const runBtn = document.getElementById('run-btn');
+    const dirInput = document.getElementById('dir-input');
+    const depthInput = document.getElementById('depth-input');
+    const folderInfo = document.getElementById('folder-info');
+    const folderPath = document.getElementById('folder-path');
+    const terminal = document.getElementById('console');
+
+    pickBtn.addEventListener('click', pickFolder);
+    runBtn.addEventListener('click', runListFiles);
+
+    async function pickFolder() {
+      try {
+        const response = await fetch('/api/pick-directory', { method: 'POST' });
+        const result = await response.json();
+
+        if (!response.ok) {
+          alert(result.error || '目录选择失败');
+          return;
+        }
+
+        if (!result.ok && result.canceled) {
+          return;
+        }
+
+        if (!result.ok) {
+          alert(result.error || '目录选择失败');
+          return;
+        }
+
+        dirInput.value = result.path;
+        folderPath.textContent = result.path;
+        folderInfo.classList.remove('hidden');
+      } catch (e) {
+        console.error(e);
+        alert('目录选择失败，请手动输入目录路径。');
+      }
+    }
+
+    async function runListFiles() {
+      const dir = dirInput.value.trim();
+      if (!dir) {
+        alert('请先输入目录路径。');
+        return;
+      }
+
+      const depthVal = depthInput.value;
+      const depthNum = depthVal ? parseInt(depthVal, 10) : null;
+
+      terminal.clear();
+      terminal.hideStats();
+      terminal.setLoading(true);
+      terminal.setTitle(dir);
+
+      const t0 = performance.now();
+      try {
+        const response = await fetch('/api/listfiles/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dir,
+            depth: Number.isFinite(depthNum) ? depthNum : null
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          terminal.setOutput(`执行失败\n\n${errorText}`);
+          terminal.showStats(0, 0, Math.round(performance.now() - t0));
+          terminal.setLoading(false);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          terminal.appendOutput(decoder.decode(value, { stream: true }));
+        }
+      } catch (e) {
+        terminal.setOutput(`请求失败\n\n${e.message}`);
+      }
+
+      terminal.showStats(0, 0, Math.round(performance.now() - t0));
+      terminal.setLoading(false);
+    }
+  </script>
+</body>
+</html>

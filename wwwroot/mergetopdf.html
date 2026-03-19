@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MergeToPdf</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full bg-gray-950 text-gray-100">
+  <main class="h-full p-4 sm:p-5">
+    <section class="h-full min-h-0 bg-gray-900 border border-gray-800 rounded-lg p-4 sm:p-5 flex flex-col">
+      <p class="text-sm text-gray-400 mb-4">调用 mergeToPdf.js：批量转 PDF 并合并。</p>
+
+      <div class="mb-3 rounded-lg border border-gray-800 overflow-hidden">
+        <div class="px-3 py-2 bg-gray-800/60 border-b border-gray-800 flex items-center justify-between">
+          <span class="text-xs text-gray-400">输入路径列表（文件或目录）</span>
+          <div class="flex items-center gap-2">
+            <button id="pick-dir-row-btn" class="text-xs px-2 py-1 rounded border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500">选目录加入</button>
+            <button id="pick-file-row-btn" class="text-xs px-2 py-1 rounded border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500">选文件加入</button>
+            <button id="pick-files-row-btn" class="text-xs px-2 py-1 rounded border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500">选多文件加入</button>
+            <button id="add-row-btn" class="text-xs px-2 py-1 rounded border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500">新增行</button>
+            <button id="remove-selected-btn" class="text-xs px-2 py-1 rounded border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500">移除选中</button>
+          </div>
+        </div>
+        <div class="overflow-auto max-h-44">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-900 sticky top-0">
+              <tr class="text-gray-400 border-b border-gray-800">
+                <th class="w-16 text-left px-3 py-2">启用</th>
+                <th class="text-left px-3 py-2">路径</th>
+                <th class="w-20 text-left px-3 py-2">操作</th>
+              </tr>
+            </thead>
+            <tbody id="paths-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-4">
+        <div>
+          <label class="text-xs text-gray-400">输出 PDF（可选）</label>
+          <div class="mt-1 flex items-center gap-2">
+            <input id="outfile" type="text" placeholder="./merged.pdf"
+              class="w-full bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500" />
+            <button id="pick-outfile-btn" class="shrink-0 text-xs px-2 py-2 rounded border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500">选择文件</button>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">LibreOffice 路径（可选）</label>
+          <input id="libreoffice" type="text" placeholder="/Applications/LibreOffice.app/Contents/MacOS/soffice"
+            class="mt-1 w-full bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500" />
+        </div>
+        <div class="flex items-end">
+          <label class="inline-flex items-center gap-2 text-sm text-gray-300 mb-2">
+            <input id="cleartemp" type="checkbox" class="w-4 h-4 accent-emerald-500" />
+            处理完成后清理临时目录
+          </label>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 mb-3">
+        <button id="run-btn"
+          class="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l14 9-14 9V3z"/>
+          </svg>
+          开始合并
+        </button>
+        <span id="api-tip" class="text-xs text-gray-500 font-mono"></span>
+      </div>
+
+      <terminal-console id="console" title="mergeToPdf.js output"></terminal-console>
+    </section>
+  </main>
+
+  <script src="./components.js"></script>
+  <script>
+    const addRowBtn = document.getElementById('add-row-btn');
+    const pickDirRowBtn = document.getElementById('pick-dir-row-btn');
+    const pickFileRowBtn = document.getElementById('pick-file-row-btn');
+    const pickFilesRowBtn = document.getElementById('pick-files-row-btn');
+    const removeSelectedBtn = document.getElementById('remove-selected-btn');
+    const pathsBody = document.getElementById('paths-body');
+    const runBtn = document.getElementById('run-btn');
+    const outfileEl = document.getElementById('outfile');
+    const pickOutfileBtn = document.getElementById('pick-outfile-btn');
+    const libreofficeEl = document.getElementById('libreoffice');
+    const cleartempEl = document.getElementById('cleartemp');
+    const apiTipEl = document.getElementById('api-tip');
+    const terminal = document.getElementById('console');
+
+    addRowBtn.addEventListener('click', () => addPathRow(''));
+    pickDirRowBtn.addEventListener('click', async () => {
+      const picked = await requestPick('/api/pick-directory');
+      if (picked) addPathRow(picked);
+    });
+    pickFileRowBtn.addEventListener('click', async () => {
+      const picked = await requestPick('/api/pick-file');
+      if (picked) addPathRow(picked);
+    });
+    pickFilesRowBtn.addEventListener('click', async () => {
+      const picked = await requestPick('/api/pick-files');
+      if (picked && Array.isArray(picked)) {
+        picked.forEach((p) => addPathRow(p));
+      }
+    });
+    removeSelectedBtn.addEventListener('click', removeSelectedRows);
+    runBtn.addEventListener('click', runMerge);
+    pickOutfileBtn.addEventListener('click', async () => {
+      const picked = await requestPick('/api/pick-save-file');
+      if (picked) outfileEl.value = picked;
+    });
+
+    async function requestPick(endpoint) {
+      try {
+        const response = await fetch(endpoint, { method: 'POST' });
+        const result = await response.json();
+
+        if (!response.ok) {
+          alert(result.error || '选择失败');
+          return null;
+        }
+
+        if (!result.ok && result.canceled) return null;
+        if (!result.ok) {
+          alert(result.error || '选择失败');
+          return null;
+        }
+
+        if (endpoint === '/api/pick-files') {
+          return result.paths || [];
+        }
+
+        return result.path;
+      } catch (error) {
+        alert(`选择失败: ${error.message}`);
+        return null;
+      }
+    }
+
+    function addPathRow(path) {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-gray-800/80';
+      tr.innerHTML = `
+        <td class="px-3 py-2 align-top"><input type="checkbox" class="row-enabled w-4 h-4 accent-emerald-500" checked /></td>
+        <td class="px-3 py-2"><input type="text" class="row-path w-full bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded px-2 py-1.5 focus:outline-none focus:border-indigo-500" value="${path.replace(/"/g, '&quot;')}" placeholder="例如 ./data 或 ./a.docx" /></td>
+        <td class="px-3 py-2 align-top"><button class="row-remove text-xs px-2 py-1 rounded border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500">删除</button></td>
+      `;
+      tr.querySelector('.row-remove').addEventListener('click', () => tr.remove());
+      pathsBody.appendChild(tr);
+    }
+
+    function removeSelectedRows() {
+      Array.from(pathsBody.querySelectorAll('tr')).forEach((row) => {
+        if (row.querySelector('.row-enabled')?.checked) row.remove();
+      });
+      if (!pathsBody.children.length) addPathRow('');
+    }
+
+    function getSelectedPaths() {
+      return Array.from(pathsBody.querySelectorAll('tr'))
+        .filter((row) => row.querySelector('.row-enabled')?.checked)
+        .map((row) => row.querySelector('.row-path')?.value?.trim() || '')
+        .filter(Boolean);
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        apiTipEl.textContent = `API OK | port: ${data.port}`;
+      } catch (_error) {
+        apiTipEl.textContent = 'API 未连接：请先运行 npm start';
+        apiTipEl.classList.add('text-amber-400');
+      }
+    }
+
+    async function runMerge() {
+      const inputs = getSelectedPaths();
+      if (!inputs.length) {
+        alert('请至少启用一条有效路径。');
+        return;
+      }
+
+      terminal.clear();
+      terminal.hideStats();
+      terminal.setLoading(true);
+      const t0 = performance.now();
+
+      try {
+        const response = await fetch('/api/mergetopdf/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            inputs,
+            outfile: outfileEl.value.trim(),
+            libreoffice: libreofficeEl.value.trim(),
+            cleartemp: cleartempEl.checked
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          terminal.setOutput(`执行失败\n\n${err}`);
+          terminal.showStats(0, 0, Math.round(performance.now() - t0));
+          terminal.setLoading(false);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          terminal.appendOutput(decoder.decode(value, { stream: true }));
+        }
+
+        terminal.showStats(0, 0, Math.round(performance.now() - t0));
+      } catch (error) {
+        terminal.setOutput(`请求失败\n\n${error.message}`);
+        terminal.showStats(0, 0, Math.round(performance.now() - t0));
+      }
+
+      terminal.setLoading(false);
+    }
+
+    addPathRow('./data');
+    addPathRow('');
+    checkHealth();
+  </script>
+</body>
+</html>

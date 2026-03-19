@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文件工具箱</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full bg-gray-950 text-gray-100">
+  <div class="h-full min-h-0 flex flex-col">
+    <header class="border-b border-gray-800 px-4 sm:px-6 py-4 flex items-center gap-3">
+      <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+      </svg>
+      <h1 class="text-lg font-semibold text-white tracking-wide">文件工具箱</h1>
+    </header>
+
+    <nav class="px-4 sm:px-6 pt-4 flex flex-wrap gap-1">
+      <button data-view="listfiles" class="entry-btn px-4 py-2 rounded-t-lg text-sm font-medium bg-gray-800 text-indigo-300 border-b-2 border-indigo-500">📄 ListFiles</button>
+      <button data-view="search" class="entry-btn px-4 py-2 rounded-t-lg text-sm font-medium bg-gray-900 text-gray-400 border-b-2 border-transparent hover:text-gray-200 hover:bg-gray-800">🔍 Search</button>
+      <button data-view="topdf" class="entry-btn px-4 py-2 rounded-t-lg text-sm font-medium bg-gray-900 text-gray-400 border-b-2 border-transparent hover:text-gray-200 hover:bg-gray-800">🖨️ ToPdf</button>
+      <button data-view="mergetopdf" class="entry-btn px-4 py-2 rounded-t-lg text-sm font-medium bg-gray-900 text-gray-400 border-b-2 border-transparent hover:text-gray-200 hover:bg-gray-800">📚 MergeToPdf</button>
+    </nav>
+
+    <main class="flex-1 min-h-0 px-4 sm:px-6 pb-4 sm:pb-6">
+      <section class="h-full min-h-0 border border-gray-800 rounded-b-lg rounded-tr-lg overflow-hidden">
+        <iframe id="app-frame" title="功能页面" src="./listfiles.html" class="w-full h-full block bg-gray-900"></iframe>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const frame = document.getElementById('app-frame');
+    const buttons = Array.from(document.querySelectorAll('.entry-btn'));
+
+    const routes = {
+      listfiles: './listfiles.html',
+      topdf: './topdf.html',
+      search: './search.html',
+      mergetopdf: './mergetopdf.html'
+    };
+
+    function setActive(view) {
+      buttons.forEach((btn) => {
+        const active = btn.dataset.view === view;
+        btn.classList.toggle('bg-gray-800', active);
+        btn.classList.toggle('text-indigo-300', active);
+        btn.classList.toggle('border-indigo-500', active);
+        btn.classList.toggle('bg-gray-900', !active);
+        btn.classList.toggle('text-gray-400', !active);
+        btn.classList.toggle('border-transparent', !active);
+      });
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        setActive(view);
+
+        if (routes[view]) {
+          frame.removeAttribute('srcdoc');
+          frame.src = routes[view];
+          return;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
